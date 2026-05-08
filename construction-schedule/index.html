@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>三商美福 工期進度</title>
+<meta name="description" content="駱胤翰 桃園朝陽街250號6樓 工期進度查詢與備忘">
+<meta name="theme-color" content="#1a1a2e">
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --card: #1a1a2e;
+    --card2: #16213e;
+    --accent: #e94560;
+    --accent2: #0f3460;
+    --text: #eee;
+    --muted: #aaa;
+    --green: #2ecc71;
+    --orange: #f39c12;
+    --blue: #3498db;
+    --purple: #9b59b6;
+    --yellow: #f1c40f;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, 'Noto Sans TC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 80px;
+  }
+  header {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    padding: 16px;
+    text-align: center;
+    border-bottom: 2px solid var(--accent);
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+  header h1 { font-size: 18px; color: var(--accent); letter-spacing: 2px; }
+  header p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .today-badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-top: 4px;
+  }
+  nav {
+    display: flex;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--card);
+    border-top: 1px solid #333;
+    z-index: 200;
+  }
+  nav button {
+    flex: 1; border: none; background: none;
+    color: var(--muted); padding: 12px 4px 8px;
+    font-size: 10px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    transition: color 0.2s;
+  }
+  nav button.active { color: var(--accent); }
+  nav button span.icon { font-size: 20px; }
+  .page { display: none; padding: 12px; }
+  .page.active { display: block; }
+
+  /* Today page */
+  .today-card {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 12px;
+    border: 1px solid #333;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+  .today-date {
+    font-size: 14px; color: var(--muted); margin-bottom: 8px;
+  }
+  .work-tag {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+    margin: 4px 4px 4px 0;
+  }
+  .section-title {
+    font-size: 12px; color: var(--muted);
+    letter-spacing: 2px; text-transform: uppercase;
+    margin: 16px 0 8px;
+  }
+  .info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid #2a2a3e;
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-label { font-size: 13px; color: var(--muted); }
+  .info-val { font-size: 13px; font-weight: bold; }
+  .progress-bar-outer {
+    background: #2a2a3e; border-radius: 8px;
+    height: 8px; overflow: hidden; margin: 4px 0;
+  }
+  .progress-bar-inner {
+    height: 100%; border-radius: 8px;
+    background: linear-gradient(90deg, var(--accent), var(--orange));
+    transition: width 0.5s;
+  }
+  .no-work {
+    text-align: center; padding: 30px;
+    color: var(--muted); font-size: 14px;
+  }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .stat-box {
+    background: rgba(255,255,255,0.04);
+    border-radius: 10px;
+    padding: 10px 6px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.07);
+  }
+  .stat-label {
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  .stat-val {
+    font-size: 14px;
+    font-weight: bold;
+  }
+
+  /* Schedule page */
+  .phase-item {
+    background: var(--card2);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 8px;
+    border-left: 4px solid var(--accent);
+    position: relative;
+    transition: transform 0.15s;
+  }
+  .phase-item.active-phase { border-color: var(--green); }
+  .phase-item.past-phase { opacity: 0.5; }
+  .phase-name { font-size: 15px; font-weight: bold; margin-bottom: 4px; }
+  .phase-dates { font-size: 12px; color: var(--muted); }
+  .phase-status {
+    position: absolute; right: 14px; top: 14px;
+    font-size: 11px; padding: 2px 8px; border-radius: 10px;
+  }
+  .status-active { background: rgba(46,204,113,0.2); color: var(--green); }
+  .status-done { background: rgba(150,150,150,0.2); color: #888; }
+  .status-upcoming { background: rgba(52,152,219,0.2); color: var(--blue); }
+
+  /* Memo page */
+  .memo-date-picker {
+    width: 100%; padding: 12px;
+    background: var(--card2);
+    border: 1px solid #333; border-radius: 10px;
+    color: var(--text); font-size: 16px;
+    margin-bottom: 12px;
+  }
+  .memo-input {
+    width: 100%; height: 100px;
+    background: var(--card2);
+    border: 1px solid #333; border-radius: 10px;
+    color: var(--text); font-size: 14px; padding: 12px;
+    resize: none;
+  }
+  .btn {
+    width: 100%; padding: 13px;
+    background: var(--accent); color: #fff;
+    border: none; border-radius: 10px;
+    font-size: 15px; font-weight: bold;
+    cursor: pointer; margin-top: 10px;
+    transition: opacity 0.2s;
+  }
+  .btn:active { opacity: 0.8; }
+  .memo-card {
+    background: var(--card2);
+    border-radius: 10px; padding: 12px;
+    margin-top: 8px;
+    border-left: 3px solid var(--yellow);
+    position: relative;
+  }
+  .memo-date-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .memo-text { font-size: 14px; }
+  .memo-del {
+    position: absolute; right: 10px; top: 10px;
+    background: none; border: none; color: #666;
+    font-size: 18px; cursor: pointer;
+  }
+  .chip {
+    display: inline-block;
+    font-size: 11px; padding: 3px 8px;
+    border-radius: 10px; margin-bottom: 6px;
+    background: rgba(233,69,96,0.15); color: var(--accent);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏗 三商美福 工期進度</h1>
+  <div class="today-badge" id="headerDate"></div>
+</header>
+
+<!-- 今日 -->
+<div class="page active" id="page-today">
+  <div class="today-card">
+    <div class="section-title">📍 今日進行中的工程</div>
+    <div id="todayWorks"></div>
+  </div>
+  <div class="today-card" id="todayMemos" style="display:none">
+    <div class="section-title">📝 今日備忘</div>
+    <div id="todayMemoList"></div>
+  </div>
+  <div class="today-card" id="nextCard">
+    <div class="section-title">⏭ 下一個工程</div>
+    <div id="nextWork"></div>
+  </div>
+  <div class="today-card">
+    <div class="section-title">📊 整體進度</div>
+    <div id="overallProgress"></div>
+  </div>
+</div>
+
+<!-- 進度表 -->
+<div class="page" id="page-schedule">
+  <div class="section-title" style="padding:4px 0">所有工程項目</div>
+  <div id="scheduleList"></div>
+</div>
+
+<!-- 備忘 -->
+<div class="page" id="page-memo">
+  <div class="today-card">
+    <div class="section-title">➕ 新增備忘</div>
+    <div class="info-label" style="margin-bottom:6px;font-size:12px">選擇日期：</div>
+    <input type="date" class="memo-date-picker" id="memoDate">
+    <textarea class="memo-input" id="memoText" placeholder="輸入備忘內容..."></textarea>
+    <button class="btn" onclick="addMemo()">儲存備忘</button>
+  </div>
+  <div class="section-title">📋 所有備忘</div>
+  <div id="memoList"></div>
+</div>
+
+<nav>
+  <button class="active" onclick="showPage('today',this)" id="nav-today">
+    <span class="icon">🏠</span>今日
+  </button>
+  <button onclick="showPage('schedule',this)" id="nav-schedule">
+    <span class="icon">📅</span>工期表
+  </button>
+  <button onclick="showPage('memo',this)" id="nav-memo">
+    <span class="icon">📝</span>備忘
+  </button>
+</nav>
+
+<script>
+// ===== 工程資料（依甘特圖解析）=====
+const PROJECT = {
+  name: "三商美福室內裝修",
+  customer: "駱胤翰",
+  address: "桃園市桃園區朝陽街250號6樓",
+  code: "C262604301",
+  consultant: "向芝儒 Amanda Hsiang",
+  startDate: "2026-05-06",
+  endDate: "2026-08-21"
+};
+
+const PHASES = [
+  { id:1,  name:"保護工程",       color:"#3498db", start:"2026-05-06", end:"2026-05-07" },
+  { id:2,  name:"空調工程",       color:"#9b59b6", start:"2026-05-08", end:"2026-05-12" },
+  { id:3,  name:"水電/弱電工程",  color:"#1abc9c", start:"2026-05-13", end:"2026-05-15" },
+  { id:4,  name:"木作工程",       color:"#e67e22", start:"2026-05-15", end:"2026-06-19" },
+  { id:5,  name:"木作階段驗收",   color:"#e74c3c", start:"2026-06-23", end:"2026-06-23" },
+  { id:6,  name:"油漆工程",       color:"#f39c12", start:"2026-06-22", end:"2026-07-16" },
+  { id:7,  name:"燈具工程",       color:"#f1c40f", start:"2026-07-16", end:"2026-07-17" },
+  { id:8,  name:"系統櫃工程",     color:"#8e44ad", start:"2026-07-20", end:"2026-07-27" },
+  { id:9,  name:"空調工程(上機)", color:"#2980b9", start:"2026-07-28", end:"2026-07-30" },
+  { id:10, name:"收尾工程",       color:"#c0392b", start:"2026-07-28", end:"2026-08-11" },
+  { id:11, name:"清潔工程",       color:"#27ae60", start:"2026-08-11", end:"2026-08-11" },
+  { id:12, name:"驗收日",         color:"#2ecc71", start:"2026-08-11", end:"2026-08-21" }
+];
+
+// ===== 工具函式 =====
+function parseDate(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function fmtDate(s){
+  const d=parseDate(s);
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+function fmtFull(s){
+  const d=parseDate(s);
+  const w=['日','一','二','三','四','五','六'][d.getDay()];
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} (${w})`;
+}
+function toStr(date){
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+function isInPhase(phase, date){
+  return date >= parseDate(phase.start) && date <= parseDate(phase.end);
+}
+function daysBetween(a,b){ return Math.round((b-a)/(1000*60*60*24)); }
+// 計算工作天（扣除六日）
+function workDays(from, to){
+  let count = 0;
+  const cur = new Date(from);
+  while(cur <= to){
+    const d = cur.getDay();
+    if(d !== 0 && d !== 6) count++;
+    cur.setDate(cur.getDate()+1);
+  }
+  return count;
+}
+
+// ===== 今日頁面 =====
+function renderToday(){
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const todayStr = toStr(today);
+  const weekNames=['日','一','二','三','四','五','六'];
+
+  document.getElementById('headerDate').textContent = 
+    `${today.getMonth()+1}月${today.getDate()}日 (${weekNames[today.getDay()]})`;
+
+  const projectStart = parseDate(PROJECT.startDate);
+  const projectEnd   = parseDate(PROJECT.endDate);
+  const dayNum = daysBetween(projectStart, today) + 1;
+
+  // 今日工程
+  const active = PHASES.filter(p => isInPhase(p, today));
+  const todayDiv = document.getElementById('todayWorks');
+  if(active.length === 0){
+    if(today < projectStart){
+      todayDiv.innerHTML = `<div class="no-work">⏳ 工程尚未開始<br><small>開工日：${fmtFull(PROJECT.startDate)}</small></div>`;
+    } else if(today > projectEnd){
+      todayDiv.innerHTML = `<div class="no-work">✅ 所有工程已完工！</div>`;
+    } else {
+      todayDiv.innerHTML = `<div class="no-work">今日無排定工程<br><small>（例假日 / 間隔日）</small></div>`;
+    }
+  } else {
+    todayDiv.innerHTML = active.map(p=>{
+      const pStart = parseDate(p.start), pEnd = parseDate(p.end);
+      const pTotal = workDays(pStart, pEnd) || 1;
+      const todayOrEnd = today <= pEnd ? today : pEnd;
+      const pElapsed = today >= pStart ? workDays(pStart, todayOrEnd) : 0;
+      const pPct = Math.round(pElapsed / pTotal * 100);
+      return `
+        <span class="work-tag" style="background:${p.color}22;color:${p.color};border:1px solid ${p.color}44">${p.name}</span>
+        <div class="info-row">
+          <span class="info-label">開始日期</span>
+          <span class="info-val" style="color:${p.color}">${fmtFull(p.start)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">結束日期</span>
+          <span class="info-val">${fmtFull(p.end)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">該項進度</span>
+          <span class="info-val" style="color:${p.color}">${pPct}%</span>
+        </div>
+        <div class="progress-bar-outer" style="margin-top:4px"><div class="progress-bar-inner" style="width:${pPct}%;background:${p.color}"></div></div>
+      `;
+    }).join('<hr style="border-color:#2a2a3e;margin:10px 0">');
+  }
+
+  // 下一個工程
+  const future = PHASES.filter(p => parseDate(p.start) > today).sort((a,b)=>parseDate(a.start)-parseDate(b.start));
+  const nextDiv = document.getElementById('nextWork');
+  const nextCard = document.getElementById('nextCard');
+  if(future.length > 0){
+    const nx = future[0];
+    const daysLeft = daysBetween(today, parseDate(nx.start));
+    nextCard.style.display='block';
+    nextDiv.innerHTML = `
+      <span class="work-tag" style="background:${nx.color}22;color:${nx.color};border:1px solid ${nx.color}44">${nx.name}</span>
+      <div class="info-row"><span class="info-label">開始日期</span><span class="info-val" style="color:${nx.color}">${fmtFull(nx.start)}</span></div>
+      <div class="info-row"><span class="info-label">結束日期</span><span class="info-val">${fmtFull(nx.end)}</span></div>
+      <div class="info-row"><span class="info-label">距離開始</span><span class="info-val" style="color:#f39c12">${daysLeft > 0 ? daysLeft+'天後' : '今天開始！'}</span></div>
+    `;
+  } else {
+    nextCard.style.display = today > projectEnd ? 'block' : 'none';
+    nextDiv.innerHTML = '<div class="no-work">無後續工程</div>';
+  }
+
+  // 整體進度
+  const total = daysBetween(projectStart, projectEnd);
+  const elapsed = Math.min(Math.max(daysBetween(projectStart, today), 0), total);
+  const pct = Math.round(elapsed/total*100);
+  document.getElementById('overallProgress').innerHTML = `
+    <div class="info-row"><span class="info-label">工程第</span><span class="info-val">${dayNum > 0 && dayNum <= 108 ? dayNum+'天' : '-'}</span></div>
+    <div class="info-row"><span class="info-label">開工日</span><span class="info-val">${fmtFull(PROJECT.startDate)}</span></div>
+    <div class="info-row"><span class="info-label">完工日</span><span class="info-val">${fmtFull(PROJECT.endDate)}</span></div>
+    <div class="info-row"><span class="info-label">整體進度</span><span class="info-val" style="color:#f39c12">${pct}%</span></div>
+    <div class="progress-bar-outer"><div class="progress-bar-inner" style="width:${pct}%"></div></div>
+  `;
+
+  // 今日備忘
+  const memos = getMemos();
+  const todayMemos = memos.filter(m=>m.date===todayStr);
+  const todayMemoCard = document.getElementById('todayMemos');
+  const todayMemoList = document.getElementById('todayMemoList');
+  if(todayMemos.length > 0){
+    todayMemoCard.style.display='block';
+    todayMemoList.innerHTML = todayMemos.map(m=>`
+      <div class="memo-card">
+        <div class="memo-text">${m.text.replace(/\n/g,'<br>')}</div>
+      </div>
+    `).join('');
+  } else {
+    todayMemoCard.style.display='none';
+  }
+}
+
+// ===== 進度表頁面 =====
+function renderSchedule(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const list = document.getElementById('scheduleList');
+  list.innerHTML = PHASES.map(p=>{
+    const s=parseDate(p.start), e=parseDate(p.end);
+    let status='upcoming', statusText='即將開始', cls='';
+    if(today > e){ status='done'; statusText='已完成'; cls='past-phase'; }
+    else if(today >= s){ status='active'; statusText='進行中'; cls='active-phase'; }
+    const statusCls = status==='active'?'status-active':status==='done'?'status-done':'status-upcoming';
+    return `
+      <div class="phase-item ${cls}" style="border-left-color:${p.color}">
+        <div class="phase-name" style="color:${p.color}">${p.name}</div>
+        <div class="phase-dates">📅 ${fmtFull(p.start)} ～ ${fmtFull(p.end)}</div>
+        <span class="phase-status ${statusCls}">${statusText}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+// ===== 備忘功能 =====
+function getMemos(){ return JSON.parse(localStorage.getItem('memos')||'[]'); }
+function saveMemos(m){ localStorage.setItem('memos', JSON.stringify(m)); }
+
+function addMemo(){
+  const date = document.getElementById('memoDate').value;
+  const text = document.getElementById('memoText').value.trim();
+  if(!date){ alert('請選擇日期'); return; }
+  if(!text){ alert('請輸入備忘內容'); return; }
+  const memos = getMemos();
+  memos.push({ id: Date.now(), date, text });
+  memos.sort((a,b)=>a.date.localeCompare(b.date));
+  saveMemos(memos);
+  document.getElementById('memoText').value='';
+  renderMemos();
+  renderToday();
+  alert('✅ 備忘已儲存！');
+}
+
+function deleteMemo(id){
+  saveMemos(getMemos().filter(m=>m.id!==id));
+  renderMemos();
+  renderToday();
+}
+
+function renderMemos(){
+  const memos = getMemos();
+  const list = document.getElementById('memoList');
+  if(memos.length===0){
+    list.innerHTML='<div class="no-work">尚無備忘記錄</div>';
+    return;
+  }
+  // 找當天對應的工程
+  list.innerHTML = memos.map(m=>{
+    const d = parseDate(m.date);
+    const works = PHASES.filter(p=>isInPhase(p,d));
+    const chips = works.map(w=>`<span class="chip">${w.name}</span>`).join(' ');
+    return `
+      <div class="memo-card">
+        <div class="memo-date-label">📅 ${fmtFull(m.date)}</div>
+        <div class="memo-text">${m.text.replace(/\n/g,'<br>')}</div>
+        <button class="memo-del" onclick="deleteMemo(${m.id})">✕</button>
+      </div>
+    `;
+  }).join('');
+}
+
+// ===== 頁面切換 =====
+function showPage(name, btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='schedule') renderSchedule();
+  if(name==='memo'){
+    // 設定今日為預設日期
+    document.getElementById('memoDate').value = toStr(new Date());
+    renderMemos();
+  }
+}
+
+// ===== 初始化 =====
+renderToday();
+</script>
+</body>
+</html>
